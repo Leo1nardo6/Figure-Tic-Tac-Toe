@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Цифровые крестики-нолики</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body { font-family: Arial; text-align: center; margin: 0; padding: 10px; }
+        #game { display: inline-block; margin: 10px auto; }
+        .row { display: flex; }
+        .cell { 
+            width: 80px; height: 80px; 
+            border: 2px solid #333; 
+            font-size: 40px; 
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .blue { color: blue; }
+        .red { color: red; }
+        #panel { margin: 15px 0; }
+        .number { 
+            display: inline-block; 
+            width: 40px; height: 40px; 
+            margin: 5px; 
+            border: 1px solid #ccc; 
+            line-height: 40px;
+            cursor: pointer;
+        }
+        #status { font-weight: bold; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h2>Цифровые крестики-нолики</h2>
+    <div id="status">Ход: <span class="blue">Синий игрок</span></div>
+    <div id="game"></div>
+    <div id="panel"></div>
+
+    <script>
+        const board = Array(3).fill().map(() => Array(3).fill(0));
+        let currentPlayer = 1; // 1 - синий, 2 - красный
+        let selectedNumber = 1;
+        const playerNumbers = {
+            1: [1, 2, 3, 4, 5, 6],
+            2: [1, 2, 3, 4, 5, 6]
+        };
+
+        function initGame() {
+            let html = '';
+            for (let i = 0; i < 3; i++) {
+                html += '<div class="row">';
+                for (let j = 0; j < 3; j++) {
+                    html += `<div class="cell" onclick="makeMove(${i},${j})" id="cell-${i}-${j}"></div>`;
+                }
+                html += '</div>';
+            }
+            document.getElementById('game').innerHTML = html;
+            updatePanel();
+        }
+
+        function updatePanel() {
+            let html = '<div>Доступные цифры: ';
+            playerNumbers[currentPlayer].forEach(num => {
+                html += `<span class="number ${currentPlayer === 1 ? 'blue' : 'red'}" 
+                         onclick="selectNumber(${num})" style="font-weight: ${num === selectedNumber ? 'bold' : 'normal'}">${num}</span>`;
+            });
+            html += '</div><div>Использованные: ';
+            [1,2,3,4,5,6].forEach(num => {
+                if (!playerNumbers[currentPlayer].includes(num)) {
+                    html += `<span class="number" style="color:#ccc">${num}</span>`;
+                }
+            });
+            document.getElementById('panel').innerHTML = html;
+            document.getElementById('status').innerHTML = 
+                `Ход: <span class="${currentPlayer === 1 ? 'blue' : 'red'}">${
+                 currentPlayer === 1 ? 'Синий' : 'Красный'} игрок</span>`;
+        }
+
+        function selectNumber(num) {
+            selectedNumber = num;
+            updatePanel();
+        }
+
+        function makeMove(row, col) {
+            const cell = board[row][col];
+            const colorClass = currentPlayer === 1 ? 'blue' : 'red';
+            
+            if (cell === 0) {
+                if (playerNumbers[currentPlayer].includes(selectedNumber)) {
+                    board[row][col] = { num: selectedNumber, player: currentPlayer };
+                    document.getElementById(`cell-${row}-${col}`).innerHTML = 
+                        `<span class="${colorClass}">${selectedNumber}</span>`;
+                    playerNumbers[currentPlayer] = playerNumbers[currentPlayer].filter(n => n !== selectedNumber);
+                    switchPlayer();
+                }
+            } else if (cell.player !== currentPlayer && selectedNumber > cell.num) {
+                if (playerNumbers[currentPlayer].includes(selectedNumber)) {
+                    board[row][col] = { num: selectedNumber, player: currentPlayer };
+                    document.getElementById(`cell-${row}-${col}`).innerHTML = 
+                        `<span class="${colorClass}">${selectedNumber}</span>`;
+                    playerNumbers[currentPlayer] = playerNumbers[currentPlayer].filter(n => n !== selectedNumber);
+                    switchPlayer();
+                }
+            } else if (cell.player === currentPlayer) {
+                selectedNumber = cell.num;
+                updatePanel();
+            }
+        }
+
+        function switchPlayer() {
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            selectedNumber = playerNumbers[currentPlayer][0] || 0;
+            updatePanel();
+            checkWinner();
+        }
+
+        function checkWinner() {
+            // Проверка строк
+            for (let row = 0; row < 3; row++) {
+                if (board[row][0] !== 0 && board[row][1] !== 0 && board[row][2] !== 0 &&
+                    board[row][0].player === board[row][1].player && board[row][1].player === board[row][2].player) {
+                    endGame(board[row][0].player);
+                    return;
+                }
+            }
+            // Проверка столбцов
+            for (let col = 0; col < 3; col++) {
+                if (board[0][col] !== 0 && board[1][col] !== 0 && board[2][col] !== 0 &&
+                    board[0][col].player === board[1][col].player && board[1][col].player === board[2][col].player) {
+                    endGame(board[0][col].player);
+                    return;
+                }
+            }
+            // Проверка диагоналей
+            if (board[0][0] !== 0 && board[1][1] !== 0 && board[2][2] !== 0 &&
+                board[0][0].player === board[1][1].player && board[1][1].player === board[2][2].player) {
+                endGame(board[0][0].player);
+                return;
+            }
+            if (board[0][2] !== 0 && board[1][1] !== 0 && board[2][0] !== 0 &&
+                board[0][2].player === board[1][1].player && board[1][1].player === board[2][0].player) {
+                endGame(board[0][2].player);
+                return;
+            }
+            // Ничья
+            if (Object.values(playerNumbers).every(arr => arr.length === 0) || 
+                board.flat().every(cell => cell !== 0)) {
+                endGame(0);
+            }
+        }
+
+        function endGame(winner) {
+            let message = '';
+            if (winner === 0) {
+                message = 'Ничья!';
+            } else {
+                message = `Победил ${winner === 1 ? 'Синий' : 'Красный'} игрок!`;
+            }
+            setTimeout(() => {
+                alert(message);
+                resetGame();
+            }, 100);
+        }
+
+        function resetGame() {
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    board[i][j] = 0;
+                    document.getElementById(`cell-${i}-${j}`).innerHTML = '';
+                }
+            }
+            currentPlayer = 1;
+            selectedNumber = 1;
+            playerNumbers[1] = [1, 2, 3, 4, 5, 6];
+            playerNumbers[2] = [1, 2, 3, 4, 5, 6];
+            updatePanel();
+        }
+
+        window.onload = initGame;
+    </script>
+</body>
+</html>
